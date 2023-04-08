@@ -108,14 +108,23 @@ canvasTable.render = function (
   }
 
   // Handle scroll events to update the viewport
-  canvas.addEventListener("scroll", handleScroll);
+  canvas.addEventListener("mousewheel", handleScroll);
 
-  function handleScroll() {
+  function handleScroll(e) {
     // Update the scroll position of the viewport based on the canvas scroll position
-    console.log(canvas.scrollTop);
-    scroll.x = canvas.scrollLeft;
-    scroll.y = canvas.scrollTop;
+    // console.log(canvas.scrollTop);
+    // debugger;
 
+    scroll.x += e.deltaX;
+    scroll.y += e.deltaY;
+    if (scroll.y <= 0) {
+      scroll.y = 0;
+    }
+    if (scroll.x <= 0) {
+      scroll.x = 0;
+    }
+
+    console.log(scroll);
     // Calculate the visible range of cells based on the current scroll position and viewport size
     var startY = Math.floor(scroll.y / cellHeight);
     var endY = Math.min(
