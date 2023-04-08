@@ -5,79 +5,139 @@ canvasTable.render = function (
   viewportWidth,
   viewportHeight
 ) {
-  // Define the viewport and scroll positions
-  var viewport = { x: 0, y: 0, width: 0, height: 0 };
-  var scroll = { x: 0, y: 0 };
-  // Get the canvas context and set the font style
-  var ctx = canvas.getContext("2d");
-
   // Define the font style for the text in the table cells
   var font = "12px sans-serif";
-  ctx.font = font;
+
   // Define the padding between cells
   var padding = 5;
 
   // Define the height of each table cell
   var cellHeight = 20;
-  // Calculate the width and height of each table cell based on the contents of the cell
+
+  // Define the viewport and scroll positions
+  var viewport = { x: 0, y: 0, width: viewportWidth, height: viewportHeight };
+  var scroll = { x: 0, y: 0 };
+
+  // Get the canvas context and set the font style
+  var ctx = canvas.getContext("2d");
+  ctx.font = font;
+
+  // Calculate the cell widths based on the maximum text length in each column
   var cellWidths = [];
-  var cellHeights = [];
-  for (var i = 0; i < tableData.length; i++) {
-    cellHeights[i] = cellHeight;
-    for (var j = 0; j < 100; j++) {
+  for (var j = 0; j < 100; j++) {
+    var maxWidth = 0;
+    for (var i = 0; i < tableData.length; i++) {
       var text = String(tableData[i][j]);
       var metrics = ctx.measureText(text);
-      var cellWidth = metrics.width + padding * 2;
-      if (cellWidths[j] == null || cellWidth > cellWidths[j]) {
-        cellWidths[j] = cellWidth;
-      }
+      var width = metrics.width + padding * 2;
+      maxWidth = Math.max(maxWidth, width);
     }
+    cellWidths[j] = maxWidth;
   }
 
-  // Calculate the total width and height of the table based on the cell widths and heights
-  var totalWidth = 0;
-  var totalHeight = 0;
-  for (var i = 0; i < tableData.length; i++) {
-    totalHeight += cellHeights[i];
-  }
-  for (var j = 0; j < 100; j++) {
-    totalWidth += cellWidths[j];
-  }
+  // Calculate the height of the table based on the number of rows and the height of each row
+  var tableHeight = tableData.length * cellHeight;
 
-  // Set the canvas width and height to match the viewport
+  // Set the canvas width and height to match the viewport width and height
   canvas.width = viewportWidth;
   canvas.height = viewportHeight;
 
-  // Set the viewport size and position
-  viewport.width = viewportWidth;
-  viewport.height = viewportHeight;
-  viewport.x = 0;
-  viewport.y = 0;
+  // Loop through the table data and render each cell within the visible range
+  var startY = Math.floor(scroll.y / cellHeight);
+  var endY = Math.min(
+    Math.ceil((scroll.y + viewportHeight) / cellHeight),
+    tableData.length
+  );
+  var startX = 0;
+  var endX = 100;
 
-  // Draw the table within the viewport
-  updateViewport();
+  var y = startY * cellHeight - scroll.y;
+  for (var i = startY; i < endY; i++) {
+    var x = 0;
+    for (var j = startX; j < endX; j++) {
+      // Get the cell text and width
+      var text = String(tableData[i][j]);
+      var cellWidth = cellWidths[j];
+
+      // Calculate the position of the cell
+      var cellX = x - scroll.x;
+      var cellY = y;
+
+      // Only render the cell if it is within the viewport
+      if (
+        cellX + cellWidth > 0 &&
+        cellX < viewport.width &&
+        cellY + cellHeight > 0 &&
+        cellY < viewport.height
+      ) {
+        // Draw the cell background
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(
+          cellX + viewport.x,
+          cellY + viewport.y,
+          cellWidth,
+          cellHeight
+        );
+
+        // Draw the cell border
+        ctx.strokeStyle = "#000";
+        ctx.strokeRect(
+          cellX + viewport.x,
+          cellY + viewport.y,
+          cellWidth,
+          cellHeight
+        );
+
+        // Draw the cell text
+        ctx.fillStyle = "#000";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(
+          text,
+          cellX + cellWidth / 2 + viewport.x,
+          cellY + cellHeight / 2 + viewport.y
+        );
+      }
+
+      // Update the x position to the next cell
+      x += cellWidth;
+    }
+
+    // Update the y position to the next row
+    y += cellHeight;
+  }
 
   // Handle scroll events to update the viewport
   canvas.addEventListener("scroll", handleScroll);
 
-  function updateViewport() {
-    // Clear the canvas and set the font style
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.font = font;
+  function handleScroll() {
+    // Update the scroll position of the viewport based on the canvas scroll position
+    console.log(canvas.scrollTop);
+    scroll.x = canvas.scrollLeft;
+    scroll.y = canvas.scrollTop;
 
-    // Loop through the table data and render each cell within the viewport
-    var y = 0;
-    for (var i = 0; i < tableData.length; i++) {
+    // Calculate the visible range of cells based on the current scroll position and viewport size
+    var startY = Math.floor(scroll.y / cellHeight);
+    var endY = Math.min(
+      Math.ceil((scroll.y + viewportHeight) / cellHeight),
+      tableData.length
+    );
+    var startX = 0;
+    var endX = 100;
+
+    // Clear the canvas and render only the cells within the visible range
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    var y = startY * cellHeight - scroll.y;
+    for (var i = startY; i < endY; i++) {
       var x = 0;
-      for (var j = 0; j < 100; j++) {
+      for (var j = startX; j < endX; j++) {
         // Get the cell text and width
         var text = String(tableData[i][j]);
         var cellWidth = cellWidths[j];
-        var cellHeight = cellHeights[i];
 
         // Calculate the position of the cell
         var cellX = x - scroll.x;
-        var cellY = y - scroll.y;
+        var cellY = y;
 
         // Only render the cell if it is within the viewport
         if (
@@ -106,6 +166,8 @@ canvasTable.render = function (
 
           // Draw the cell text
           ctx.fillStyle = "#000";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
           ctx.fillText(
             text,
             cellX + cellWidth / 2 + viewport.x,
@@ -117,19 +179,9 @@ canvasTable.render = function (
         x += cellWidth;
       }
 
-      // Update the y position
       // Update the y position to the next row
       y += cellHeight;
     }
-  }
-
-  function handleScroll() {
-    // Update the scroll position of the viewport based on the canvas scroll position
-    scroll.x = canvas.scrollLeft;
-    scroll.y = canvas.scrollTop;
-
-    // Update the viewport based on the new scroll position
-    updateViewport();
   }
 };
 
